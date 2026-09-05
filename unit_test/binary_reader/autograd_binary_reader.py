@@ -70,6 +70,8 @@ def ReaderFlashAttention(
     std_dev_cache = load_tensor("./src/cache/cpp_out/std_dev_cache.bin", shape=(batch_size, seq_len),
                              dtype=np.float32).to(device)
 
+    # print(f"mean cache: {mean_cache} \b std dev cache: {std_dev_cache}")
+
 
     wqt = load_tensor("./src/cache/cpp_out/wqt.bin",
                       shape=(d_model, d_model),
@@ -120,7 +122,7 @@ def ReaderFlashAttention(
                           ).to(device)
 
     layer_norm_gamma = load_tensor("./src/cache/cpp_out/gamma_host.bin",
-                        shape=(d_model, 1, 1),
+                        shape=(d_model,),
                         dtype=np.float32
                         ).to(device)
     x = load_tensor("./src/cache/cpp_out/embedding.bin",

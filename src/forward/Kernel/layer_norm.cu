@@ -16,6 +16,7 @@ __device__ __forceinline__ void ParallelReducer(float &localSum)
     localSum = __shfl_sync(0xffffffff, localSum, 0);
 }
 
+// Known issue we have a problem here.
 // We need to optimize this tomorrow it wont work if the d_model > 32
 // True level of optimization without very much to loose takes more time probally thousnads of line and insanely complicated code.
 __global__ void layerNormKernelSlow( // not "slow" but slower than which utilizes registers
@@ -141,7 +142,7 @@ __global__ void layerNormKernel(
     int batch_idx = blockIdx.y; // which batch item
     int e = threadIdx.x;        // which embed dimension, dmodel
 
-    int idx = (seq_idx * batch_size + batch_idx) * d_model + e;
+    int idx = batch_idx * (seq_len * d_model) + seq_idx * d_model + e;
 
     float val = x[idx];
 
@@ -174,8 +175,13 @@ __global__ void layerNormKernel(
     float std = sqrtf(variance + 1e-8f);
     x[idx] = gamma[e] * ((val - mean) / std) + beta[e]; // fingers crossed no race condition.
 
-    std_dev_cache[idx] = std;
-    mean_cache[idx] = mean;
+    // std_dev_cache[idx] = std;
+    // mean_cache[idx] = mean;
+
+    int out_idx_std_mean = seq_idx * batch_size + batch_idx;
+
+    mean_cache[out_idx_std_mean] = mean;
+    std_dev_cache[out_idx_std_mean] = std;
 }
 
 // I must have forgotten something here,

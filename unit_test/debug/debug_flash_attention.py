@@ -203,5 +203,10 @@ class DebugFlashAttention(torch.nn.Module):
             self.d_model
         )
 
-        print(f"From kernel: {self.layer_norm_back_x}")
-        print(f"From torch: {back_x}")
+        # this layer_norm was little bit tricky many parallel reduction, and shapes to take care of
+        check_layer_norm_back_grad = torch.allclose(back_x, self.layer_norm_back_x,atol=1e-4, rtol=1e-4)
+
+        if not check_layer_norm_back_grad:
+            print(f"Checking check_layer_norm_back_grad status: {RED} {check_layer_norm_back_grad} {RESET}")
+        else:
+            print(f"Checking check_layer_norm_back_grad status: {GREEN} {check_layer_norm_back_grad} {RESET}")

@@ -252,8 +252,8 @@ public:
         cudaMemcpy(K_host, model_paramaters.attention_head.K_cache, batch_size * seq_len * num_heads * head_dim * sizeof(float), cudaMemcpyDeviceToHost);
         cudaMemcpy(d_score_t, model_paramaters.d_score_t, batch_size * num_heads * seq_len * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
 
-        cudaMemcpy(mean_host, model_paramaters.attention_head.mean_cache, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
-        cudaMemcpy(std_dev_host, model_paramaters.attention_head.std_dev_cache, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(mean_host, model_paramaters.attention_head.mean_cache, batch_size * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(std_dev_host, model_paramaters.attention_head.std_dev_cache, batch_size * seq_len * sizeof(float), cudaMemcpyDeviceToHost);
         cudaMemcpy(gamma_host, model_paramaters.attention_head.d_gamma, d_model * sizeof(float), cudaMemcpyDeviceToHost);
 
         bulkRelease<float>(
@@ -261,8 +261,8 @@ public:
              {dK_host, batch_size * seq_len * num_heads * head_dim, "dk.bin"},
              {Q_host, batch_size * seq_len * num_heads * head_dim, "q.bin"},
              {K_host, batch_size * seq_len * num_heads * head_dim, "k.bin"},
-             {mean_host, batch_size * seq_len * d_model, "mean_cache.bin"},
-             {std_dev_host, batch_size * seq_len * d_model, "std_dev_cache.bin"},
+             {mean_host, batch_size * seq_len, "mean_cache.bin"},
+             {std_dev_host, batch_size * seq_len, "std_dev_cache.bin"},
              {gamma_host, d_model * sizeof(float), "gamma_host.bin"},
              {d_score_t, batch_size * num_heads * seq_len * seq_len, "d_score_t.bin"}});
 

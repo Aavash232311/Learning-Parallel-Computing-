@@ -63,9 +63,9 @@ public:
         cudaMemcpy(d_gamma, h_gamma, d_model * sizeof(float), cudaMemcpyHostToDevice);
         cudaMemcpy(d_beta, h_beta, d_model * sizeof(float), cudaMemcpyHostToDevice);
 
-        cudaMalloc((void **)&std_dev_cache, batch_size * seq_len * d_model * sizeof(float));
+        cudaMalloc((void **)&std_dev_cache, batch_size * seq_len * sizeof(float));
 
-        cudaMalloc((void **)&mean_cache, batch_size * seq_len * d_model * sizeof(float));
+        cudaMalloc((void **)&mean_cache, batch_size * seq_len * sizeof(float));
     }
 
     ~LayerNorm()

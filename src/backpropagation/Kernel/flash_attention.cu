@@ -183,12 +183,9 @@ __global__ void LayerNormBackPropgationKernel(
 
     int D = C;
 
-
     // skipping index formula
     float *x_row = x + batch_idx * (T * C) + row_idx * C;
     float *G_row = G + batch_idx * (T * C) + row_idx * C;
-    float *mc_row = mc + (batch_idx * T + row_idx) * C;
-    float *sdc_row = sdc + (batch_idx * T + row_idx) * C;
 
     int lane = threadIdx.x % 32;
     int warp_id = threadIdx.x / 32;
@@ -198,11 +195,14 @@ __global__ void LayerNormBackPropgationKernel(
     __shared__ float shared_sum_2[32];
     float epsilon = 1e-8f;
 
+    float mean_val = mc[batch_idx * T + row_idx];
+    float std_val = sdc[batch_idx * T + row_idx];
+
     // I like to call temp reduction
     float sum_term_1 = 0.0f, sum_term_2 = 0.0f;
     for (int i = threadIdx.x; i < C; i += blockDim.x)
     {
-        float x_hat = (x_row[i] - mc_row[i]) / sqrtf(sdc_row[i] * sdc_row[i] + epsilon);
+        float x_hat = (x_row[i] - mean_val) / sqrtf(std_val * std_val + epsilon);
         sum_term_1 += G_row[i] * gamma[i];
         sum_term_2 += G_row[i] * gamma[i] * x_hat;
     }
@@ -243,17 +243,18 @@ __global__ void LayerNormBackPropgationKernel(
     for (int i = threadIdx.x; i < C; i += blockDim.x)
     {
         // by the def sigma = sqrt(sigma + e)
-        float first_component = 1.0f / (D * sqrtf(sdc_row[i] * sdc_row[i] + epsilon));
+        float first_component = 1.0f / (D * sqrtf(std_val * std_val + epsilon));
 
         // printf("First componenet: %f epsilon: %.9g sigma^2 %f sqrt(d_head) %f \n", first_component, epsilon, sdc_row[i] * sdc_row[i], D);
 
         float dl_x_hat = G_row[i] * gamma[i] * D;
-        float curr_xhat = (x_row[i] - mc_row[i]) / sqrtf(sdc_row[i] * sdc_row[i] + epsilon);
+        float curr_xhat = (x_row[i] - mean_val) / sqrtf(std_val * std_val + epsilon);
 
         float final_comp = first_component * (dl_x_hat - sum_term_1 - curr_xhat * sum_term_2);
         x_row[i] = final_comp;
     }
 }
+
 __global__ void sumBTC3TensorKernel(
     float *A, // Shape (B, T, C)
     float *B,
@@ -305,24 +306,22 @@ extern "C"
     void layernorm_backward(
         float *x,
         float *G,
-        float *mc, 
-        float *sdc, 
+        float *mc,
+        float *sdc,
         float *gamma,
         float D,
-        int B, 
-        int T, 
-        int C
-    )
+        int B,
+        int T,
+        int C)
     {
         dim3 blockDim(256, 1, 1);
-        dim3 gridDim(T, B, 1);    // one block per (batch, row)
+        dim3 gridDim(T, B, 1); // one block per (batch, row)
 
         LayerNormBackPropgationKernel<<<gridDim, blockDim>>>(
             x, G, mc, sdc, gamma, B, T, C);
 
         cudaDeviceSynchronize();
     }
-
 
     void addThreeTensor(
         float *A,
@@ -376,7 +375,7 @@ extern "C"
         dim3 blockSize(threads_per_block, 1, 1);
         dim3 gridSize(row_count, 1, 1); // one block per row, simple 1D grid
 
-        // according to my common sense and schooling D is the total number of element 
+        // according to my common sense and schooling D is the total number of element
 
         LayerNormBackPropgationKernel<<<gridSize, blockSize>>>(
             x, G, mc, sdc, gamma, B, T, C);
