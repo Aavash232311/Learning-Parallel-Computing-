@@ -121,8 +121,9 @@ __global__ void layerNormKernelSlow( // not "slow" but slower than which utilize
         out_row[i] = gamma[i] * ((row[i] - mean) / std) + beta[i];
     }
 
-    std_dev_cache[row_idx] = std;
-    mean_cache[row_idx] = mean;
+    // Shape of these two is (B*T, C)
+    std_dev_cache[batch_idx * seq_len + row_idx] = std;
+    mean_cache[batch_idx * seq_len + row_idx] = mean;
 }
 
 // ------------ We forgoet to account for d_model > 32 ------------- we need to do it all the time whenever using memory from the register.
@@ -172,7 +173,6 @@ __global__ void layerNormKernel(
     // like in the Columb's law.
     float std = sqrtf(variance + 1e-8f);
     x[idx] = gamma[e] * ((val - mean) / std) + beta[e]; // fingers crossed no race condition.
-
 
     std_dev_cache[idx] = std;
     mean_cache[idx] = mean;

@@ -66,8 +66,8 @@ def ReaderFlashAttention(
                      ).to(device)
 
     # LayerNorm's mean and std dev cache, Note: just to check if the data is healthy
-    mean_cache = load_tensor("./src/cache/cpp_out/mean_cache.bin", shape=(batch_size * seq_len, d_model), dtype=np.float32).to(device)
-    std_dev_cache = load_tensor("./src/cache/cpp_out/std_dev_cache.bin", shape=(batch_size * seq_len, d_model),
+    mean_cache = load_tensor("./src/cache/cpp_out/mean_cache.bin", shape=(batch_size, seq_len), dtype=np.float32).to(device)
+    std_dev_cache = load_tensor("./src/cache/cpp_out/std_dev_cache.bin", shape=(batch_size, seq_len),
                              dtype=np.float32).to(device)
 
 

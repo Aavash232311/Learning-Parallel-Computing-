@@ -3,7 +3,7 @@ import math
 import torch
 from debug.static import RESET, RED, GREEN
 from binary_reader.autograd_binary_reader import ReaderFlashAttention
-from Complex_kernel_opreations.layer_norm_back import layer_norm_back
+from Complex_kernel_opreations.layer_norm_back import layer_backward_analytical
 
 ''' This will debug the mathematical operation in flash attention class '''
 
@@ -184,12 +184,12 @@ class DebugFlashAttention(torch.nn.Module):
         else:
             print(f"Checking G_x_hat (total upstream for layer norm), status: {GREEN} {check_G_x_hat} {RESET}")
 
-        layer_norm_back(
+        layer_backward_analytical(
             self.x,
             self.G_x_hat,
+            self.layer_norm_gamma,
             self.mc,
             self.stdc,
-            self.layer_norm_gamma,
             self.batch_size,
             self.seq_len,
             self.d_model
