@@ -123,8 +123,11 @@ __global__ void layerNormKernelSlow( // not "slow" but slower than which utilize
     }
 
     // Shape of these two is (B*T, C)
-    std_dev_cache[batch_idx * seq_len + row_idx] = std;
-    mean_cache[batch_idx * seq_len + row_idx] = mean;
+    if (threadIdx.x == 0)
+    {
+        mean_cache[batch_idx * seq_len + row_idx] = mean;
+        std_dev_cache[batch_idx * seq_len + row_idx] = std;
+    }
 }
 
 // ------------ We forgoet to account for d_model > 32 ------------- we need to do it all the time whenever using memory from the register.
