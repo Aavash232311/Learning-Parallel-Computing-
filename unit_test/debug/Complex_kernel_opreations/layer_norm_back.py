@@ -21,12 +21,6 @@ def layer_backward_analytical(x:torch.Tensor,
     mean = mean.reshape(B, T, 1)
     std = std.reshape(B, T, 1)
 
-    print(f"mean shape: {mean.shape} \n"
-          f"G shape: {G.shape} \n"
-          f"std shape: {std.shape} \n"
-          f"gamma shape: {gamma.shape} \n"
-          f"x shape: {x.shape} \n")
-
     D: float = float(D)
     first_comp = 1.0 / (D * std)
 

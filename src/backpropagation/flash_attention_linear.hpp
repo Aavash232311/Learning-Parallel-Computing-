@@ -74,15 +74,15 @@ private:
         );
 
 
-        if (debug)
-        {
-            float* arr = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
-            cudaMemcpy(arr, model_paramaters.attention_head.x, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
+        // if (debug)
+        // {
+        //     float* arr = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
+        //     cudaMemcpy(arr, model_paramaters.attention_head.x, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
 
-            this->utils->printFlatArray3D(arr, batch_size, seq_len, d_model);
+        //     this->utils->printFlatArray3D(arr, batch_size, seq_len, d_model);
 
-            free(arr);  
-        }
+        //     free(arr);  
+        // }
 
         if (debug)
             pyDebuggerReleaseStage8();
