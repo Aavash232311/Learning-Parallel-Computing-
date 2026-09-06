@@ -6,6 +6,8 @@
 // I am afraid that I manage memory like I have no common sense at all
 // but anyway right now we just want it to work.
 
+
+// todo: add a production grade comment after a single working prototype comes into play
 struct AttentionParamaters
 {
     LinearParams Q_params;
