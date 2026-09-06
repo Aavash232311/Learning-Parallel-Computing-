@@ -133,11 +133,15 @@ def ReaderFlashAttention(
                                     shape=(batch_size, seq_len, d_model),
                                     dtype=np.float32).to(device)
 
+    beta = load_tensor("./src/cache/cpp_out/beta.bin",
+                       shape=(d_model, ),
+                       dtype=np.float32).to(device)
+
     return (P, V, PT, VT, G_unc, dl_dh, dp, dV,
             softmax_upstream, dQ, k, q, d_score_t,
             dK, wqt, wkt, wvt, wq, wk, wv, upq, upk,
             upv, G_x_hat, layer_norm_gamma, mean_cache,
-            std_dev_cache, x, layer_norm_back_x)
+            std_dev_cache, x, layer_norm_back_x, beta)
 
 def Reader(
         batch_size: int,

@@ -740,6 +740,9 @@ $$
 
 $$G_{\hat{x}_0} = \left( \frac{1}{\sqrt{d_k}} G_S K \right) W_Q^T + \left( \frac{1}{\sqrt{d_k}} G_S^T Q \right) W_K^T + (P^T G_O) W_V^T$$
 
+I totally forgot gamma and beta are also learnable paramaters, therefore we will need to do something about them.
+
+
 
 
 

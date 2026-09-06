@@ -39,6 +39,7 @@ struct AttentionParamaters
     float *mean_cache;
     float *std_dev_cache;
     float *d_gamma;
+    float *d_beta;
 
 
     // Pass Host reference to linear layer of weights of QKV

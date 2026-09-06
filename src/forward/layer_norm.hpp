@@ -142,4 +142,9 @@ public:
     {
         return this->mean_cache;
     }
+
+    float *getBeta()
+    {
+        return this->d_beta;
+    }
 };

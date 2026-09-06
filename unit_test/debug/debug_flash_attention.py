@@ -27,7 +27,7 @@ class DebugFlashAttention(torch.nn.Module):
          self.wq, self.wk, self.wv, self.upq,
          self.upk, self.upv, self.G_x_hat,
          self.layer_norm_gamma, self.mc, self.stdc,
-         self.x, self.layer_norm_back_x) = ReaderFlashAttention(batch_size, seq_len, vocab_size, d_model, num_heads, head_dim)
+         self.x, self.layer_norm_back_x, self.beta) = ReaderFlashAttention(batch_size, seq_len, vocab_size, d_model, num_heads, head_dim)
 
     # dV = P^T G
     # dP = GV^T
