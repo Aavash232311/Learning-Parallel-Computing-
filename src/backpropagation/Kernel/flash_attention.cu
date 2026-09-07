@@ -174,6 +174,8 @@ __global__ void LayerNormBackPropgationKernel(
     float *mc,    // mean cache (B*T, C)
     float *sdc,   // sdc cache (B*T,)
     float *gamma, // (C)
+    float *dgamma,
+    float *dbeta,
     int B,
     int T,
     int C)
@@ -203,6 +205,10 @@ __global__ void LayerNormBackPropgationKernel(
     for (int i = threadIdx.x; i < C; i += blockDim.x)
     {
         float x_hat = (x_row[i] - mean_val) / sqrtf(std_val * std_val + epsilon);
+
+        atomicAdd(&dgamma[i], G_row[i] * x_hat);
+        atomicAdd(&dbeta[i], G_row[i]);
+
         sum_term_1 += G_row[i] * gamma[i];
         sum_term_2 += G_row[i] * gamma[i] * x_hat;
     }
@@ -301,74 +307,18 @@ __global__ void ReformBNTH_BTC_Kernel(
     }
 }
 
-__global__ void LayerNormBetaGammaBackward(
-    float *x,      // (B, T, C)
-    float *mc,     // (B*T, C)
-    float *sdc,    // (B*T, C)
-    float *G,      // Shape(B, T, C)
-    float *dbeta,  // [c]
-    float *dgamma, // [c]
-    int B,
-    int T,
-    int C)
-{
-    int batch_idx = blockIdx.y; // rows and column of each block
-    int row_idx = blockIdx.x;
-
-    // pointer to the first element of X and G row
-    float *x_row = x + batch_idx * (T * C) + row_idx * C;
-    float *G_row = G + batch_idx * (T * C) + row_idx * C;
-
-    float epsilon = 1e-8f;
-
-    float mean_val = mc[batch_idx * T + row_idx]; // shapes (B*T, C)
-    float std_val = sdc[batch_idx * T + row_idx];
-
-    // one block per channel
-    for (int i = threadIdx.x; i < C; i += blockDim.x)
-    {
-        float x_hat = (x_row[i] - mean_val) / sqrtf(std_val * std_val + epsilon);
-
-        // dgamma[i] = dgamma[i] + value;
-        /*
-            Side note: sum_b_t (G) = G_row[i]
-        */
-        atomicAdd(&dgamma[i], G_row[i] * x_hat);
-        atomicAdd(&dbeta[i], G_row[i]);
-    }
-}
 
 extern "C"
 {
 
-    void layer_norm_beta_gamma_backward(
-        float *x,      // (B, T, C)
-        float *mc,     // (B*T, C)
-        float *sdc,    // (B*T, C)
-        float *G,      // Shape(B, T, C)
-        float *dbeta,  // [c]
-        float *dgamma, // [c]
-        int B,
-        int T,
-        int C)
-    {
-        cudaMemset(dgamma, 0, C * sizeof(float));
-        cudaMemset(dbeta, 0, C * sizeof(float));
-
-        dim3 blockDim(256, 1, 1);
-        // TxB block each one havong 256 threads assigned to them
-        dim3 gridDim(T, B, 1);
-        LayerNormBetaGammaBackward<<<gridDim, blockDim>>>(x, mc, sdc, G, dbeta, dgamma, B, T, C);
-
-        cudaDeviceSynchronize();
-    }
     void layernorm_backward(
         float *x,
         float *G,
         float *mc,
         float *sdc,
         float *gamma,
-        float D,
+        float *dgamma,
+        float *debta,
         int B,
         int T,
         int C)
@@ -377,7 +327,7 @@ extern "C"
         dim3 gridDim(T, B, 1); // one block per (batch, row)
 
         LayerNormBackPropgationKernel<<<gridDim, blockDim>>>(
-            x, G, mc, sdc, gamma, B, T, C);
+            x, G, mc, sdc, gamma, dgamma, debta, B, T, C);
 
         cudaDeviceSynchronize();
     }
@@ -417,30 +367,7 @@ extern "C"
 
         cudaDeviceSynchronize();
     }
-    void layerNormBackGrad(
-        float *x,     // (B, T, C) input from forward pass
-        float *G,     // (B, T, C) upstream gradient dL/dy
-        float *mc,    // mean cache (B*T,)    ONE float per row, not per channel
-        float *sdc,   // std dev cache (B*T,) ONE float per row, not per channel
-        float *gamma, // (C,)  learnable scale
-        int B,
-        int T,
-        int C)
-    {
-        int row_count = B * T;                            // one row per (batch, token) pair
-        int threads_per_block = ((C + 31) / 32) * 32;     // round C up to nearest warp (32)
-        threads_per_block = min(threads_per_block, 1024); // cap at CUDA's max threads/block
 
-        dim3 blockSize(threads_per_block, 1, 1);
-        dim3 gridSize(row_count, 1, 1); // one block per row, simple 1D grid
-
-        // according to my common sense and schooling D is the total number of element
-
-        LayerNormBackPropgationKernel<<<gridSize, blockSize>>>(
-            x, G, mc, sdc, gamma, B, T, C);
-
-        cudaDeviceSynchronize();
-    }
     void softmaxBackGradKernel(
         float *P,
         float *dY,
