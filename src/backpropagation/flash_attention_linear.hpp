@@ -17,6 +17,7 @@ extern "C" void dl_dh_upstream(float *A, float *B, float *C, int a, int b, int c
 extern "C" void ReformBNTH_BTC(float *arr, float *out, int batch_size, int seq_len, int d_model, int num_head, int head_dim);
 extern "C" void addThreeTensor(float *A, float *B, float *C, float *Out, int batch_size, int seq_len, int d_model);
 extern "C" void layernorm_backward(float *x, float *G, float *mc, float *sdc, float *gamma, int B, int T, int C);
+extern "C" void layer_norm_beta_gamma_backward(float *x, float *mc, float *sdc, float *G, float *dbeta, float *dgamma, int B, int T, int C);
 // G_kx0 total upstream gradient and Linear Layer, add-residual back propagation here.
 class FlashAttentionLinear : virtual public AutoGradEngine
 {
@@ -62,6 +63,18 @@ private:
         // copy that x after the net_embedding to device
         cudaMemcpy(model_paramaters.device_x, model_paramaters.attention_head.x, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyHostToDevice);
 
+        layer_norm_beta_gamma_backward(
+            model_paramaters.attention_head.x,
+            model_paramaters.attention_head.mean_cache,
+            model_paramaters.attention_head.std_dev_cache,
+            model_paramaters.G_x_hat,
+            model_paramaters.debeta,
+            model_paramaters.dgamma,
+            batch_size,
+            seq_len,
+            d_model);
+
+        // Note- IMPORTANT X WILL BE OVERRITTEN HERE partial L / partial x
         layernorm_backward(
             model_paramaters.attention_head.x,
             model_paramaters.G_x_hat,
@@ -70,19 +83,8 @@ private:
             model_paramaters.attention_head.d_gamma,
             batch_size,
             seq_len,
-            d_model
-        );
+            d_model);
 
-
-        // if (debug)
-        // {
-        //     float* arr = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));
-        //     cudaMemcpy(arr, model_paramaters.attention_head.x, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
-
-        //     this->utils->printFlatArray3D(arr, batch_size, seq_len, d_model);
-
-        //     free(arr);  
-        // }
 
         if (debug)
             pyDebuggerReleaseStage8();

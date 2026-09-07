@@ -15,6 +15,8 @@ from binary_reader.hyperparamaters import read_hyperparamaters
     Never trust the debugger too much, this is for basic mathematical verification (for specific operations) only.
     Use local print and this combined :)
     
+    THIS IS JUST MY ROUGH WORK NOTHING ELSE A SMALL SANITY CHECK
+    
     Wont notice things like infinitely large values in a kernel sometimes,
     just focuses on mathematical operations. 
  '''

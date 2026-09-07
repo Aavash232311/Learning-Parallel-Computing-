@@ -311,6 +311,12 @@ public:
 
         layer_norm_x = (float *)malloc(batch_size * seq_len * d_model * sizeof(float));;
 
+        float *d_delta_beta;
+        float *d_delta_gamma;
+
+        d_delta_beta = (float *)malloc(d_model * sizeof(float));
+        d_delta_gamma = (float *)malloc(d_model * sizeof(float));
+
         cudaMemcpy(WQT, model_paramaters.WqT, d_model * d_model * sizeof(float), cudaMemcpyDeviceToHost);
         cudaMemcpy(WKT, model_paramaters.WkT, d_model * d_model * sizeof(float), cudaMemcpyDeviceToHost);
         cudaMemcpy(WVT, model_paramaters.WvT, d_model * d_model * sizeof(float), cudaMemcpyDeviceToHost);
@@ -323,6 +329,9 @@ public:
 
         cudaMemcpy(layer_norm_x, model_paramaters.attention_head.x, batch_size * seq_len * d_model * sizeof(float), cudaMemcpyDeviceToHost);
         cudaMemcpy(d_beta, model_paramaters.attention_head.d_beta, d_model * sizeof(float), cudaMemcpyDeviceToHost);
+
+        cudaMemcpy(d_delta_beta, model_paramaters.debeta, d_model * sizeof(float), cudaMemcpyDeviceToHost);
+        cudaMemcpy(d_delta_gamma, model_paramaters.dgamma, d_model * sizeof(float), cudaMemcpyDeviceToHost);
 
         // Also release the weight should be on host from Linear class, Later we will think of a way to
         // reduce memory copy on PCIe BUS which is costly under each epoch.
@@ -340,7 +349,8 @@ public:
                 {upV, batch_size * seq_len * d_model, "upV.bin"},
                 {G_x_hat_host, batch_size * seq_len * d_model, "G_x_hat.bin"},
                 {layer_norm_x, batch_size * seq_len * d_model, "layer_norm_x.bin"},
-                {d_beta, d_model, "beta.bin"}
+                {d_delta_beta, d_model, "d_beta.bin"},
+                {d_delta_gamma, d_model, "d_gamma.bin"}
             });
 
         free(WQT);
@@ -354,5 +364,8 @@ public:
         free(G_x_hat_host);
         free(layer_norm_x);
         free(d_beta);
+
+        free(d_delta_beta);
+        free(d_delta_gamma);
     }
 };

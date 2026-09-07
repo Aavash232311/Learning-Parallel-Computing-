@@ -255,45 +255,6 @@ __global__ void LayerNormBackPropgationKernel(
     }
 }
 
-__global__ void LayerNormBetaGammaBackward(
-    float *x,      // (B, T, C)
-    float *mc,     // (B*T, C)
-    float *sdc,    // (B*T, C)
-    float *G,      // Shape(B, T, C)
-    float *dbeta,  // [c]
-    float *dgamma, // [c]
-    int B,
-    int T,
-    int C)
-{
-    int batch_idx = blockIdx.y;
-    int row_idx = blockIdx.x;
-
-    float *x_row = x + batch_idx * (T * C) + row_idx * C;
-    float *G_row = G + batch_idx * (T * C) + row_idx * C;
-
-    int lane = threadIdx.x % 32;
-    int warp_id = threadIdx.x / 32;
-    int num_warps = blockDim.x / 32;
-
-    float epsilon = 1e-8f;
-
-    float mean_val = mc[batch_idx * T + row_idx]; // shapes (B*T, C)
-    float std_val = sdc[batch_idx * T + row_idx];
-
-    float x_hat = 0.0f;
-
-    // one block per channel
-    for (int i = threadIdx.x; i < C; i += blockDim.x)
-    {
-        float x_hat = (x_row[i] - mean_val) / sqrtf(std_val * std_val + epsilon);
-
-        // dgamma[i] = dgamma[i] + value;
-        atomicAdd(&dgamma[i], G_row[i] * x_hat);
-        atomicAdd(&dbeta[i], G_row[i]);
-    }
-}
-
 __global__ void sumBTC3TensorKernel(
     float *A, // Shape (B, T, C)
     float *B,
@@ -340,6 +301,43 @@ __global__ void ReformBNTH_BTC_Kernel(
     }
 }
 
+__global__ void LayerNormBetaGammaBackward(
+    float *x,      // (B, T, C)
+    float *mc,     // (B*T, C)
+    float *sdc,    // (B*T, C)
+    float *G,      // Shape(B, T, C)
+    float *dbeta,  // [c]
+    float *dgamma, // [c]
+    int B,
+    int T,
+    int C)
+{
+    int batch_idx = blockIdx.y; // rows and column of each block
+    int row_idx = blockIdx.x;
+
+    // pointer to the first element of X and G row
+    float *x_row = x + batch_idx * (T * C) + row_idx * C;
+    float *G_row = G + batch_idx * (T * C) + row_idx * C;
+
+    float epsilon = 1e-8f;
+
+    float mean_val = mc[batch_idx * T + row_idx]; // shapes (B*T, C)
+    float std_val = sdc[batch_idx * T + row_idx];
+
+    // one block per channel
+    for (int i = threadIdx.x; i < C; i += blockDim.x)
+    {
+        float x_hat = (x_row[i] - mean_val) / sqrtf(std_val * std_val + epsilon);
+
+        // dgamma[i] = dgamma[i] + value;
+        /*
+            Side note: sum_b_t (G) = G_row[i]
+        */
+        atomicAdd(&dgamma[i], G_row[i] * x_hat);
+        atomicAdd(&dbeta[i], G_row[i]);
+    }
+}
+
 extern "C"
 {
 
@@ -354,11 +352,13 @@ extern "C"
         int T,
         int C)
     {
+        cudaMemset(dgamma, 0, C * sizeof(float));
+        cudaMemset(dbeta, 0, C * sizeof(float));
+
         dim3 blockDim(256, 1, 1);
         // TxB block each one havong 256 threads assigned to them
         dim3 gridDim(T, B, 1);
-
-        LayerNormBetaGammaBackward<<<gridDim, blockDim>>>(x, G, mc, sdc, dgamma, dbeta, B, T, C);
+        LayerNormBetaGammaBackward<<<gridDim, blockDim>>>(x, mc, sdc, G, dbeta, dgamma, B, T, C);
 
         cudaDeviceSynchronize();
     }

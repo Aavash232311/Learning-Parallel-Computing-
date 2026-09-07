@@ -3,7 +3,7 @@ import math
 import torch
 from debug.static import RESET, RED, GREEN
 from binary_reader.autograd_binary_reader import ReaderFlashAttention
-from Complex_kernel_opreations.layer_norm_back import layer_backward_analytical
+from Complex_kernel_opreations.layer_norm_back import layer_backward_analytical, layer_norm_beta_gamma_analytical
 
 ''' This will debug the mathematical operation in flash attention class '''
 
@@ -27,7 +27,8 @@ class DebugFlashAttention(torch.nn.Module):
          self.wq, self.wk, self.wv, self.upq,
          self.upk, self.upv, self.G_x_hat,
          self.layer_norm_gamma, self.mc, self.stdc,
-         self.x, self.layer_norm_back_x, self.beta) = ReaderFlashAttention(batch_size, seq_len, vocab_size, d_model, num_heads, head_dim)
+         self.x, self.layer_norm_back_x, self.beta,
+         self.d_gamma, self.d_beta) = ReaderFlashAttention(batch_size, seq_len, vocab_size, d_model, num_heads, head_dim)
 
     # dV = P^T G
     # dP = GV^T
@@ -210,3 +211,27 @@ class DebugFlashAttention(torch.nn.Module):
             print(f"Checking check_layer_norm_back_grad status: {RED} {check_layer_norm_back_grad} {RESET}")
         else:
             print(f"Checking check_layer_norm_back_grad status: {GREEN} {check_layer_norm_back_grad} {RESET}")
+
+        d_gamma, d_beta = layer_norm_beta_gamma_analytical(
+            self.x,
+            self.G_x_hat,
+            self.mc,
+            self.stdc,
+            self.batch_size,
+            self.seq_len
+        )
+
+
+
+        check_d_gamma = torch.allclose(d_gamma, self.d_gamma,atol=1e-4, rtol=1e-4)
+        check_d_beta = torch.allclose(d_beta, self.d_beta,atol=1e-4, rtol=1e-4)
+
+        if not check_d_gamma:
+            print(f"Checking check_d_gamma status: {RED} {check_d_gamma} {RESET}")
+        else:
+            print(f"Checking check_d_gamma status: {GREEN} {check_d_gamma} {RESET}")
+
+        if not check_d_beta:
+            print(f"Checking check_d_beta status: {GREEN} {check_d_beta} {RESET}")
+        else:
+            print(f"Checking check_d_beta status: {GREEN} {check_d_beta} {RESET}")

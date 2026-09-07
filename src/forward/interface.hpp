@@ -144,6 +144,9 @@ class AttentionInterface
 
     float *device_x;
 
+    float *dbeta;
+    float *dgamma;
+
 private:
     // ----------- TEMPORARY DEBUGGER SCRIPT ---------------------
 
@@ -286,6 +289,9 @@ public:
         cudaMalloc((void **)&dvWt, batch_size * seq_len * d_model * sizeof(float));
 
         cudaMalloc((void **)&device_x, batch_size * seq_len * d_model * sizeof(float));
+
+        cudaMalloc((void **)&dbeta, d_model * sizeof(float));
+        cudaMalloc((void **)&dgamma, d_model * sizeof(float));
     }
 
     ~AttentionInterface()
@@ -356,6 +362,9 @@ public:
         cudaFree(G_x_hat);
 
         cudaFree(device_x);
+
+        cudaFree(dbeta);
+        cudaFree(dgamma);
     }
 
     LinearParams getLmHeadParams()
@@ -524,6 +533,9 @@ public:
                 modelParamaters.G_x_hat = G_x_hat; // net G_hat from the derivation
 
                 modelParamaters.device_x = device_x;
+
+                modelParamaters.debeta = dbeta;
+                modelParamaters.dgamma = dgamma;
 
                 // because the backprops needs to be done for each epoch.
                 // we need to keep in mind that the things hurting performace like cuda malloc and everything declared

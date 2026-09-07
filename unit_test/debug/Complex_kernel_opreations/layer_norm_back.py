@@ -39,3 +39,27 @@ def layer_backward_analytical(x: torch.Tensor,
 
     dx = first_comp * (second_comp - sum_term_1 - x_hat * sum_term_2)
     return dx
+
+def layer_norm_beta_gamma_analytical(x: torch.Tensor,
+                                       G: torch.Tensor,
+                                       mean: torch.Tensor,
+                                       std: torch.Tensor,
+                                       B: int, T: int):
+    """
+    :param x: input after net embedding
+    :param G: G_x_hat net upstream gradient
+    :param mean: mean cache from forward pass
+    :param std: std cache from forward pass
+    :param B: batch size
+    :param T: seq length
+    :return: d_gamma, d_beta
+    """
+
+    mean = mean.reshape(B, T, 1)
+    std = std.reshape(B, T, 1)
+
+    x_hat = (x - mean) / std
+    d_beta = G.sum(dim=(0, 1))
+    d_gamma = (G * x_hat).sum(dim=(0, 1))
+
+    return d_gamma, d_beta
